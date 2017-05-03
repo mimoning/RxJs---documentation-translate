@@ -729,3 +729,23 @@ RxJS 最有用的地方在于其操作函数（Operators），虽然它的基础
     console.log('just before subscribe');
     observable.subscribe(finalObserver);
     console.log('just after subscribe');
+
+`ProxyObserver` 是在 `observeOn(Rx.Scheduler.async)` 中创建的，且其 `next(val)` 函数大致就如下：
+
+    var proxyObserver = {
+      next: val => {
+        Rx.Scheduler.async.schedule(
+          x => finalObserver.next(x),
+          0 /* delay */,
+          val /* will be the x for the function above */,
+        );
+      },
+
+      // ...
+    }
+
+`async` 调度方法的运作是伴随着 `setTimeout` 或者 `setInterval` 的，即使参数 `delay` 给的值是 0。经常的，在 JavaScript 中，`setTimeout(fn, 0)` 被广泛用于在下一个事件循环中最早调用函数 `fn`。这解释了为什么 `got value 1` 为什么会在 `just after subscribe` 发生之后被发送给 `finalObserver`
+
+调度对象的 `schedule()` 方法接受一个 `delay` 参数，可以指定调度对象内置时钟的时间大小。一个调度对象的时钟不需要跟真实的系统时间有任何关系。这是为什么时间操作函数如 `delay` 并不运行在真实的时间上，而是在由调度对象的时钟产生的时间上。这一点尤其在测试中非常有用，其中一个*虚拟时间调度器*可以当真实同步执行任务时遮蔽系统时间（有点难以理解）
+
+
