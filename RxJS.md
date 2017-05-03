@@ -671,3 +671,61 @@ RxJS 最有用的地方在于其操作函数（Operators），虽然它的基础
 
 ### 选择一个操作函数
 
+详见官方文档
+
+## 调度（Scheduler）
+
+什么是调度？一个调度控制着什么时候一个订阅开始和什么时候通知被分发。它由三个组件组成：
+
+  * 一个调度是一个数据结构。它知道怎么基于优先级或其他规则来存储和排列任务
+  * 一个调度是一个执行过程上下文。它表示任务在哪里以及在何时被执行（如：立即执行，在例如 `setTimeout`、`process.nextTick`或动画等回调机制里执行）
+  * 一个调度有一个（虚拟的）时钟。它提供了一个代表时间的方法 `now()`。任务只遵循这个时钟所表示的时间在一个特定的调度上被安排
+
+> A Scheduler lets you define in what execution context will an Observable deliver notifications to its Observer.
+
+如下示例，我们使用一个简单的同步发送值 `1` `2` `3` 的可观察对象来作为例子，使用操作函数 `observeOn` 来指定 `async` 调度来分发这些值
+
+    var observable = Rx.Observable.create(observer => {
+      observer.next(1);
+      observer.next(2);
+      observer.next(3);
+      observer.complete();
+    })
+    .observeOn(Rx.Scheduler.async);
+
+    console.log('just before subscribe');
+    observable.subscribe({
+      next: x => console.log(`got value ${x}`),
+      error: err => console.error(`something wrong occurred: ${err}`),
+      complete: () => console.log('done'),
+    });
+    console.log('just after subscribe');
+
+输出：
+
+    just before subscribe
+    just after subscribe
+    got value 1
+    got value 2
+    got value 3
+    done
+
+注意通知 `got value ...` 在 `just after subscribe` 之后是怎么被分发的，与前面我们看到的默认行为有怎么样的不同。这是因为 `observeOn(Rx.Scheduler.async)` 在 `Observable.create` 和最终的观察者之间引入了一个代理观察者。让我们把一些标识符重命名来凸显差异：
+
+    var observable = Rx.Observable.create(proxyObserver => {
+      proxyObserver.next(1);
+      proxyObserver.next(2);
+      proxyObserver.next(3);
+      proxyObserver.complete();      
+    })
+    .observeOn(Rx.Scheduler.async);
+
+    var finalObserver = {
+      next: x => console.log(`got value ${x}`),
+      error: err => console.error(`something wrong occurred: ${err}`),
+      complete: () => console.log('done'),
+    };
+
+    console.log('just before subscribe');
+    observable.subscribe(finalObserver);
+    console.log('just after subscribe');
